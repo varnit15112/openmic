@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14161c">
+  <title>Mic Night NYC</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand-row">
+      <h1>Mic Night <span>NYC</span></h1>
+      <div class="view-toggle" role="tablist" aria-label="View">
+        <button role="tab" data-view="list" aria-selected="true">List</button>
+        <button role="tab" data-view="map" aria-selected="false">Map</button>
+      </div>
+    </div>
+
+    <nav class="days" id="days" aria-label="Day of week"></nav>
+
+    <div class="filter-bar">
+      <button class="filter-btn" id="filterBtn" aria-expanded="false" aria-controls="filters">
+        Filters <span class="badge" id="filterCount" hidden></span>
+      </button>
+      <button class="near-btn" id="nearBtn" aria-pressed="false">📍 Near me</button>
+      <span class="count" id="resultCount"></span>
+    </div>
+
+    <div class="filters" id="filters" hidden>
+      <label class="field wide">
+        <span>Search</span>
+        <input type="search" id="q" placeholder="Venue, neighborhood, mic name…" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Borough</span>
+        <select id="borough">
+          <option value="">All boroughs</option>
+          <option>Manhattan</option>
+          <option>Brooklyn</option>
+          <option>Queens</option>
+          <option>Bronx</option>
+          <option>Staten Island</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Type</span>
+        <select id="type">
+          <option value="">All types</option>
+          <option value="comedy">Comedy</option>
+          <option value="music">Music</option>
+          <option value="poetry">Poetry</option>
+          <option value="variety">Variety</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Starts after</span>
+        <select id="from"></select>
+      </label>
+      <label class="field">
+        <span>Starts before</span>
+        <select id="to"></select>
+      </label>
+      <label class="field check wide">
+        <input type="checkbox" id="free">
+        <span>Free only</span>
+      </label>
+      <button class="reset" id="reset">Reset filters</button>
+    </div>
+
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <main class="layout" data-view="list">
+    <section class="list" id="list" aria-live="polite"></section>
+    <section class="map-wrap"><div id="map"></div></section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="data/mics.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
