@@ -14,7 +14,7 @@ python3 -m http.server
 
 ## Data
 
-Listings live in `data/mics.js` (currently dummy data). Each entry has a name, venue, address, borough, coordinates, weekdays (`0` = Sunday), a 24h start time (`24:30` = 12:30am), type, fee and sign-up info.
+Listings live in `data/mics.js`: 90 NYC comedy open mics transcribed from the [@eyecandycomedy](https://www.instagram.com/eyecandycomedy/) Fall '26 mic list. Venue addresses were checked by web search and geocoded with the US Census geocoder. Each entry has a mic name, venue, address, neighborhood, borough, coordinates, weekdays (`0` = Sunday), a 24h start time, whether it runs weekly, and an optional note (e.g. "Sober mic"). Entries with `lat`/`lng` of `null` show in the list but not on the map.
 
 ## Stack
 

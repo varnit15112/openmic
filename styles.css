@@ -156,6 +156,11 @@ h1 span { color: var(--accent); }
 .tag.dist { color: var(--accent); }
 .tag.soon { background: var(--accent); color: #fff; }
 
+.tag.note { background: color-mix(in srgb, var(--night) 16%, transparent); color: var(--night); }
+.tag.irregular { background: transparent; border: 1px dashed var(--muted); color: var(--muted); }
+.credit { font-size: 12px; color: var(--muted); text-align: center; margin: 20px 8px 0; }
+.credit a { color: inherit; }
+
 .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
 .empty b { display: block; color: var(--text); font-size: 17px; margin-bottom: 4px; }
 

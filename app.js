@@ -2,12 +2,13 @@
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const NYC_CENTER = [40.73, -73.95];
 
-  // Color code by time of day. `max` is exclusive, in minutes after midnight.
+  // Color code by start time. `max` is exclusive, in minutes after midnight.
+  // Bands are tuned to the real list, where most mics start between 6 and 8pm.
   const BUCKETS = [
-    { key: "afternoon", label: "Before 5pm", max: 17 * 60 },
-    { key: "evening",   label: "5–8pm",      max: 20 * 60 },
-    { key: "night",     label: "8–11pm",     max: 23 * 60 },
-    { key: "late",      label: "11pm+",      max: Infinity },
+    { key: "afternoon", label: "Before 6pm",  max: 18 * 60 },
+    { key: "evening",   label: "6–7:15pm",    max: 19 * 60 + 30 },
+    { key: "night",     label: "7:30–9:30pm", max: 22 * 60 },
+    { key: "late",      label: "10pm+",       max: Infinity },
   ];
 
   const $ = (sel) => document.querySelector(sel);
@@ -29,16 +30,16 @@
 
   // ---------- State ----------
   const today = new Date().getDay();
-  const defaults = { day: today, q: "", borough: "", type: "", from: 0, to: 27 * 60, free: false };
+  const defaults = { day: today, q: "", borough: "", from: 0, to: 27 * 60, weekly: false };
   const state = { ...defaults, view: "list", near: false, me: null, activeId: null };
   try {
     const saved = JSON.parse(localStorage.getItem("micnight-filters") || "{}");
-    for (const k of ["borough", "type", "from", "to", "free"]) if (k in saved) state[k] = saved[k];
+    for (const k of ["borough", "from", "to", "weekly"]) if (k in saved) state[k] = saved[k];
   } catch {}
   const save = () => {
     try {
-      const { borough, type, from, to, free } = state;
-      localStorage.setItem("micnight-filters", JSON.stringify({ borough, type, from, to, free }));
+      const { borough, from, to, weekly } = state;
+      localStorage.setItem("micnight-filters", JSON.stringify({ borough, from, to, weekly }));
     } catch {}
   };
 
@@ -71,13 +72,17 @@
   timeOptions($("#from"), false);
   timeOptions($("#to"), true);
 
+  // Only offer boroughs that actually have mics
+  const boroughs = [...new Set(mics.map((m) => m.borough).filter(Boolean))].sort();
+  $("#borough").innerHTML = `<option value="">All boroughs</option>` + boroughs.map((b) => `<option>${esc(b)}</option>`).join("");
+  if (!boroughs.includes(state.borough)) state.borough = "";
+
   function syncInputs() {
     $("#q").value = state.q;
     $("#borough").value = state.borough;
-    $("#type").value = state.type;
     $("#from").value = state.from;
     $("#to").value = state.to;
-    $("#free").checked = state.free;
+    $("#weekly").checked = state.weekly;
   }
 
   const bind = (id, key, parse = (v) => v) => {
@@ -89,10 +94,9 @@
   };
   bind("#q", "q");
   bind("#borough", "borough");
-  bind("#type", "type");
   bind("#from", "from", Number);
   bind("#to", "to", Number);
-  bind("#free", "free");
+  bind("#weekly", "weekly");
 
   $("#filterBtn").onclick = () => {
     const panel = $("#filters");
@@ -101,7 +105,7 @@
     setTimeout(() => map.invalidateSize(), 0);
   };
   $("#reset").onclick = () => {
-    Object.assign(state, { q: "", borough: "", type: "", from: 0, to: 27 * 60, free: false });
+    Object.assign(state, { q: "", borough: "", from: 0, to: 27 * 60, weekly: false });
     syncInputs(); save(); render();
   };
 
@@ -144,7 +148,7 @@
   $("#legend").innerHTML = BUCKETS.map((b) => `<span><i style="background:${colorOf(b)}"></i>${b.label}</span>`).join("");
 
   // ---------- Map ----------
-  const map = L.map("map", { zoomControl: false, attributionControl: true }).setView(NYC_CENTER, 12);
+  const map = L.map("map", { zoomControl: false, attributionControl: true, zoomSnap: 0.25 }).setView(NYC_CENTER, 12);
   L.control.zoom({ position: "bottomright" }).addTo(map);
   // Esri tiles work without an API key or Referer, so the page also works when opened as a local file
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
@@ -159,7 +163,7 @@
   function fitToMarkers() {
     const pts = [...markers.values()].map((m) => m.getLatLng());
     if (state.me && state.near) pts.push(L.latLng(state.me));
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 15 });
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 15 });
   }
 
   // ---------- Filtering ----------
@@ -170,23 +174,25 @@
     return 2 * R * Math.asin(Math.sqrt(x));
   };
 
+  const hasLoc = (m) => m.lat != null && m.lng != null;
+
   function filtered() {
     const q = state.q.trim().toLowerCase();
     let out = mics.filter((m) =>
       m.days.includes(state.day) &&
       (!state.borough || m.borough === state.borough) &&
-      (!state.type || m.type === state.type) &&
       m.min >= state.from && m.min < state.to &&
-      (!state.free || /free/i.test(m.fee)) &&
-      (!q || [m.name, m.venue, m.neighborhood, m.borough, m.address].some((s) => s.toLowerCase().includes(q)))
+      (!state.weekly || m.weekly) &&
+      (!q || [m.name, m.venue, m.neighborhood, m.borough, m.address, m.note].some((s) => s && s.toLowerCase().includes(q)))
     );
-    out = out.map((m) => ({ ...m, dist: state.near && state.me ? distKm(state.me, [m.lat, m.lng]) : null }));
-    out.sort((a, b) => (state.near ? a.dist - b.dist : 0) || a.min - b.min || a.name.localeCompare(b.name));
+    out = out.map((m) => ({ ...m, dist: state.near && state.me && hasLoc(m) ? distKm(state.me, [m.lat, m.lng]) : null }));
+    // Mics with no known location sort last when sorting by distance
+    out.sort((a, b) => (state.near ? (a.dist ?? Infinity) - (b.dist ?? Infinity) : 0) || a.min - b.min || a.name.localeCompare(b.name));
     return out;
   }
 
   function activeFilterCount() {
-    return ["q", "borough", "type", "free"].filter((k) => state[k]).length +
+    return ["q", "borough", "weekly"].filter((k) => state[k]).length +
       (state.from !== defaults.from) + (state.to !== defaults.to);
   }
 
@@ -210,12 +216,11 @@
         <div class="time"><b>${f.t}</b><small>${f.ap}${m.min >= 24 * 60 ? " (late)" : ""}</small></div>
         <div>
           <strong class="title">${esc(m.name)}</strong>
-          <div class="venue">${esc(m.venue)} · ${esc(m.neighborhood)}, ${esc(m.borough)}</div>
+          <div class="venue">${esc(m.venue)} · ${hasLoc(m) ? `${esc(m.neighborhood)}, ${esc(m.borough)}` : "Location TBD"}</div>
           <div class="tags">
             ${st && st !== "past" ? `<span class="tag soon">${st}</span>` : ""}
-            <span class="tag type">${esc(m.type)}</span>
-            <span class="tag">${esc(m.fee)}</span>
-            <span class="tag">${esc(m.signup)}</span>
+            ${m.note ? `<span class="tag note">${esc(m.note)}</span>` : ""}
+            ${m.weekly ? "" : `<span class="tag irregular">Not weekly · check schedule</span>`}
             ${dist}
           </div>
         </div>
@@ -229,7 +234,8 @@
       <h4>${esc(m.name)}</h4>
       <p class="when">${DAYS[state.day]} · ${f.t}${f.ap}</p>
       <p>${esc(m.venue)}<br>${esc(m.address)}, ${esc(m.neighborhood)}</p>
-      <p>${esc(m.fee)} · ${esc(m.signup)}</p>
+      ${m.note ? `<p>${esc(m.note)}</p>` : ""}
+      ${m.weekly ? "" : `<p>Not weekly · check the mic's page</p>`}
       <a href="${dir}" target="_blank" rel="noopener">Directions →</a>
     </div>`;
   }
@@ -238,6 +244,9 @@
     const list = renderList();
     renderMap(list, fit);
   }
+
+  const CREDIT = `<p class="credit">Mic list from <a href="https://www.instagram.com/eyecandycomedy/" target="_blank" rel="noopener">@eyecandycomedy</a> (Fall '26).
+    Schedules change, so check the mic's own page before heading out.</p>`;
 
   function renderList() {
     const list = filtered();
@@ -260,6 +269,7 @@
           : "";
       }).join("");
     }
+    el.insertAdjacentHTML("beforeend", CREDIT);
     return list;
   }
 
@@ -269,6 +279,7 @@
     markers.clear();
     const seen = {};
     for (const m of list) {
+      if (!hasLoc(m)) continue;
       const k = `${m.lat},${m.lng}`;
       const i = (seen[k] = (seen[k] ?? -1) + 1);
       const f = fmtTime(m.min);
@@ -291,6 +302,7 @@
     document.querySelectorAll(".card").forEach((c) => c.classList.toggle("active", Number(c.dataset.id) === id));
     markers.forEach((mk, mid) => mk.getElement()?.querySelector(".pin")?.classList.toggle("active", mid === id));
     const mk = markers.get(id);
+    if (fromList && !mk) return; // no location to show on the map
     if (fromList && mk) {
       if (state.view === "list" && innerWidth < 900) setView("map");
       setTimeout(() => {
@@ -315,4 +327,6 @@
   renderDays();
   render();
   if (location.hash === "#map") setView("map");
+  // The first fit can run before layout settles; re-fit once the page has loaded
+  addEventListener("load", () => { map.invalidateSize(); if (!state.activeId) fitToMarkers(); });
 })();

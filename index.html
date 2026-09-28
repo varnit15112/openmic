@@ -31,28 +31,11 @@
     <div class="filters" id="filters" hidden>
       <label class="field wide">
         <span>Search</span>
-        <input type="search" id="q" placeholder="Venue, neighborhood, mic name…" autocomplete="off">
+        <input type="search" id="q" placeholder="Mic, venue, neighborhood…" autocomplete="off">
       </label>
       <label class="field">
         <span>Borough</span>
-        <select id="borough">
-          <option value="">All boroughs</option>
-          <option>Manhattan</option>
-          <option>Brooklyn</option>
-          <option>Queens</option>
-          <option>Bronx</option>
-          <option>Staten Island</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>Type</span>
-        <select id="type">
-          <option value="">All types</option>
-          <option value="comedy">Comedy</option>
-          <option value="music">Music</option>
-          <option value="poetry">Poetry</option>
-          <option value="variety">Variety</option>
-        </select>
+        <select id="borough"></select>
       </label>
       <label class="field">
         <span>Starts after</span>
@@ -63,8 +46,8 @@
         <select id="to"></select>
       </label>
       <label class="field check wide">
-        <input type="checkbox" id="free">
-        <span>Free only</span>
+        <input type="checkbox" id="weekly">
+        <span>Weekly mics only</span>
       </label>
       <button class="reset" id="reset">Reset filters</button>
     </div>
